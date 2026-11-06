@@ -1,0 +1,10 @@
+{
+  "appId": "com.bancada3d.app",
+  "appName": "Bancada 3D",
+  "webDir": "www",
+  "ios": {
+    "contentInset": "never",
+    "backgroundColor": "#e8edef",
+    "preferredContentMode": "mobile"
+  }
+}

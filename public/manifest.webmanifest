@@ -1,0 +1,16 @@
+{
+  "name": "Bancada 3D",
+  "short_name": "Bancada 3D",
+  "description": "Precificação, catálogo, orçamentos, pedidos e clientes para impressão 3D.",
+  "lang": "pt-BR",
+  "start_url": "./#inicio",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#e8edef",
+  "theme_color": "#c8440c",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

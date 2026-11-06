@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Bancada 3D</title>
+    <meta name="claude:viewport-fit-sides" content="cover" />
+    <meta name="description" content="Precificação, catálogo, orçamentos, pedidos e clientes para quem vende impressão 3D." />
+    <meta name="theme-color" content="#c8440c" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="Bancada 3D" />
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23c8440c'/%3E%3Cg fill='%23fff'%3E%3Crect x='12' y='41' width='40' height='6' rx='3'/%3E%3Crect x='16' y='32' width='32' height='6' rx='3'/%3E%3Crect x='20' y='23' width='24' height='6' rx='3'/%3E%3Crect x='25' y='14' width='14' height='6' rx='3'/%3E%3C/g%3E%3C/svg%3E" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,100..900&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" />
+    <script id="boot-js">
+      // Roda antes do app: se algo impedir a abertura, mostra o motivo em vez de uma tela em branco.
+      ;(function () {
+        var erros = []
+        var codigoFonte = false
+        var LOGO =
+          '<svg width="44" height="44" viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="14" fill="#c8440c"/><g fill="#fff"><rect x="12" y="41" width="40" height="6" rx="3"/><rect x="16" y="32" width="32" height="6" rx="3"/><rect x="20" y="23" width="24" height="6" rx="3"/><rect x="25" y="14" width="14" height="6" rx="3"/></g></svg>'
+        function esc(t) {
+          return String(t).replace(/[&<>"]/g, function (c) {
+            return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]
+          })
+        }
+        function anotar(t) {
+          if (t && erros.length < 3) erros.push(String(t).slice(0, 240))
+        }
+        function mostrar() {
+          var boot = document.getElementById('boot')
+          if (!boot) return // o app já abriu
+          var caixa = boot.querySelector('.caixa')
+          if (!caixa) return
+          if (location.protocol === 'file:' && document.querySelector('script[src*="src/main.jsx"]')) codigoFonte = true
+          if (codigoFonte) {
+            caixa.innerHTML =
+              LOGO +
+              '<h1>Este arquivo é o código-fonte</h1><p>Ele não abre sozinho. Feche esta aba e dê dois cliques no arquivo <b>ABRIR-O-APP.html</b>, que está nesta mesma pasta.</p>'
+            return
+          }
+          caixa.innerHTML =
+            LOGO +
+            '<h1>O app não terminou de abrir</h1><p>Toque em Recarregar. Se continuar assim, mande um print desta tela.</p>' +
+            (erros.length ? '<code>' + esc(erros.join(' · ')) + '</code>' : '') +
+            '<button type="button" id="boot-recarregar">Recarregar</button>'
+          var b = document.getElementById('boot-recarregar')
+          if (b)
+            b.addEventListener('click', function () {
+              location.reload()
+            })
+        }
+        window.addEventListener(
+          'error',
+          function (e) {
+            var alvo = e && e.target
+            if (alvo && alvo !== window && alvo.tagName) {
+              var url = alvo.src || alvo.href || ''
+              if (/src\/main\.jsx/.test(url)) {
+                codigoFonte = true
+                mostrar()
+              } else if (alvo.tagName === 'SCRIPT') {
+                anotar('Não carregou: ' + url)
+                setTimeout(mostrar, 1500)
+              }
+              return
+            }
+            anotar(e && (e.message || (e.error && e.error.message)))
+            setTimeout(mostrar, 1500)
+          },
+          true,
+        )
+        window.addEventListener('unhandledrejection', function (e) {
+          var r = e && e.reason
+          anotar(r && (r.message || r))
+        })
+        setTimeout(mostrar, 9000)
+      })()
+    </script>
+    <style id="boot-css">
+      body { margin: 0; }
+      #boot { min-height: 100vh; display: grid; place-items: center; padding: 24px 16px; background: #e8edef; color: #33424b; font: 15px/1.5 'IBM Plex Sans', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; text-align: center; }
+      #boot .caixa { max-width: 440px; display: grid; gap: 12px; justify-items: center; }
+      #boot h1 { margin: 0; font-size: 1.3rem; color: #121a1f; }
+      #boot p { margin: 0; }
+      #boot code { font-size: 12px; color: #5b6970; word-break: break-word; }
+      #boot button { font: inherit; font-weight: 600; padding: 10px 18px; border: 0; border-radius: 10px; background: #c8440c; color: #fff; cursor: pointer; }
+      #boot .giro { width: 28px; height: 28px; border: 3px solid #d2dade; border-top-color: #c8440c; border-radius: 50%; animation: boot-giro 0.8s linear infinite; }
+      @keyframes boot-giro { to { transform: rotate(360deg); } }
+      @media (prefers-color-scheme: dark) {
+        :root:not([data-theme='light']):not([data-aparencia='claro']) #boot { background: #0e1316; color: #c4cfd5; }
+        :root:not([data-theme='light']):not([data-aparencia='claro']) #boot h1 { color: #e7edf0; }
+        :root:not([data-theme='light']):not([data-aparencia='claro']) #boot code { color: #8d9ea6; }
+        :root:not([data-theme='light']):not([data-aparencia='claro']) #boot button { background: #ff7f45; color: #1d0c03; }
+        :root:not([data-theme='light']):not([data-aparencia='claro']) #boot .giro { border-color: #29353c; border-top-color: #ff7f45; }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root"><div id="boot"><div class="caixa"><svg width="44" height="44" viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="14" fill="#c8440c"/><g fill="#fff"><rect x="12" y="41" width="40" height="6" rx="3"/><rect x="16" y="32" width="32" height="6" rx="3"/><rect x="20" y="23" width="24" height="6" rx="3"/><rect x="25" y="14" width="14" height="6" rx="3"/></g></svg><div class="giro"></div><p>Abrindo o Bancada 3D…</p></div></div></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>
