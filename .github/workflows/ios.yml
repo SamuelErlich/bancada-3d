@@ -1,0 +1,135 @@
+# Gera o app do iPhone/iPad (.ipa SEM assinatura) para assinar no GBox com o seu certificado (.p12 + .mobileprovision).
+# Como usar: aba "Actions" do repositório → "App iOS (.ipa para assinar)" → "Run workflow".
+name: App iOS (.ipa para assinar)
+
+on:
+  workflow_dispatch:
+    inputs:
+      bundle_id:
+        description: "Bundle ID (use o App ID do seu .mobileprovision; com perfil coringa * pode deixar este)"
+        required: true
+        default: "com.bancada3d.app"
+      versao:
+        description: "Versão do app (ex.: 1.0.0)"
+        required: true
+        default: "1.0.0"
+      publicar_release:
+        description: "Também criar uma Release com o .ipa (link direto para baixar no iPhone)"
+        type: boolean
+        default: false
+
+jobs:
+  ipa:
+    name: Gerar o .ipa
+    # Capacitor 8 precisa do Xcode 26 (padrão no macos-26)
+    runs-on: macos-26
+    timeout-minutes: 45
+    permissions:
+      contents: write
+    env:
+      BUNDLE_ID: ${{ inputs.bundle_id }}
+      VERSAO: ${{ inputs.versao }}
+    steps:
+      - name: Conferir o Bundle ID e a versão
+        run: |
+          if ! [[ "$BUNDLE_ID" =~ ^[A-Za-z][A-Za-z0-9-]*(\.[A-Za-z0-9-]+)+$ ]]; then
+            echo "::error::Bundle ID inválido: $BUNDLE_ID (exemplo válido: com.seunome.bancada3d)"; exit 1
+          fi
+          if ! [[ "$VERSAO" =~ ^[0-9]+(\.[0-9]+){0,2}$ ]]; then
+            echo "::error::Versão inválida: $VERSAO (exemplo válido: 1.0.0)"; exit 1
+          fi
+
+      - name: Baixar o código
+        uses: actions/checkout@v4
+
+      - name: Usar o Xcode 26 (exigido pelo Capacitor 8)
+        run: |
+          atual=$(xcodebuild -version | head -1 | awk '{print $2}')
+          if [ "${atual%%.*}" -lt 26 ]; then
+            novo=$(ls -d /Applications/Xcode_26*.app 2>/dev/null | grep -vi beta | tail -1)
+            if [ -n "$novo" ]; then sudo xcode-select -s "$novo/Contents/Developer"; fi
+          fi
+          xcodebuild -version
+
+      - name: Instalar o Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Instalar as dependências
+        run: npm ci
+
+      - name: Testar o motor de preço, as planilhas e o armazenamento do app
+        run: npm test
+
+      - name: Gerar o app (pasta www)
+        run: npm run build:ios
+
+      - name: Copiar para o projeto do Xcode (Capacitor)
+        run: npx cap sync ios
+
+      - name: Aplicar Bundle ID e versão
+        run: |
+          PBX=ios/App/App.xcodeproj/project.pbxproj
+          sed -i '' -E "s/PRODUCT_BUNDLE_IDENTIFIER = [^;]+;/PRODUCT_BUNDLE_IDENTIFIER = ${BUNDLE_ID};/g" "$PBX"
+          sed -i '' -E "s/MARKETING_VERSION = [^;]+;/MARKETING_VERSION = ${VERSAO};/g" "$PBX"
+          sed -i '' -E "s/CURRENT_PROJECT_VERSION = [^;]+;/CURRENT_PROJECT_VERSION = ${GITHUB_RUN_NUMBER};/g" "$PBX"
+          grep -E "PRODUCT_BUNDLE_IDENTIFIER|MARKETING_VERSION|CURRENT_PROJECT_VERSION" "$PBX" | sort -u
+
+      - name: Compilar sem assinatura (Release, iPhone e iPad)
+        run: |
+          xcodebuild \
+            -project ios/App/App.xcodeproj \
+            -scheme App \
+            -configuration Release \
+            -sdk iphoneos \
+            -destination "generic/platform=iOS" \
+            -archivePath "$RUNNER_TEMP/Bancada3D.xcarchive" \
+            -derivedDataPath "$RUNNER_TEMP/DerivedData" \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            DEVELOPMENT_TEAM="" \
+            archive
+
+      - name: Montar o .ipa
+        run: |
+          APP="$RUNNER_TEMP/Bancada3D.xcarchive/Products/Applications/App.app"
+          test -d "$APP" || { echo "::error::App.app não foi gerado"; exit 1; }
+          rm -rf "$RUNNER_TEMP/ipa" && mkdir -p "$RUNNER_TEMP/ipa/Payload"
+          cp -R "$APP" "$RUNNER_TEMP/ipa/Payload/"
+          echo "Bundle ID: $(/usr/libexec/PlistBuddy -c 'Print CFBundleIdentifier' "$APP/Info.plist")"
+          echo "Versão: $(/usr/libexec/PlistBuddy -c 'Print CFBundleShortVersionString' "$APP/Info.plist") ($(/usr/libexec/PlistBuddy -c 'Print CFBundleVersion' "$APP/Info.plist"))"
+          lipo -info "$APP/App"
+          test -f "$APP/public/index.html" || { echo "::error::O app web não entrou no pacote"; exit 1; }
+          cd "$RUNNER_TEMP/ipa"
+          zip -qry "Bancada3D-${VERSAO}.ipa" Payload
+          ls -lh "Bancada3D-${VERSAO}.ipa"
+
+      - name: Guardar o .ipa (aba Summary → Artifacts)
+        uses: actions/upload-artifact@v4
+        with:
+          name: Bancada3D-${{ inputs.versao }}-ipa-sem-assinatura
+          path: ${{ runner.temp }}/ipa/*.ipa
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Criar Release com o .ipa (opcional)
+        if: ${{ inputs.publicar_release }}
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ios-${{ inputs.versao }}-build${{ github.run_number }}
+          name: Bancada 3D iOS ${{ inputs.versao }} (build ${{ github.run_number }})
+          body: App sem assinatura. Assine no GBox com o seu certificado (.p12 + .mobileprovision) antes de instalar.
+          files: ${{ runner.temp }}/ipa/*.ipa
+
+      - name: Próximos passos
+        run: |
+          {
+            echo "### .ipa pronto (sem assinatura)"
+            echo "1. Nesta página, em **Artifacts**, baixe **Bancada3D-${VERSAO}-ipa-sem-assinatura** (vem dentro de um .zip)."
+            echo "2. Abra o .zip e pegue o arquivo **Bancada3D-${VERSAO}.ipa**."
+            echo "3. No GBox: importe o .ipa, escolha o seu certificado (.p12 + senha + .mobileprovision), assine e instale."
+            echo "Bundle ID usado: \`${BUNDLE_ID}\` (precisa combinar com o App ID do seu .mobileprovision, se ele não for coringa)."
+          } >> "$GITHUB_STEP_SUMMARY"
